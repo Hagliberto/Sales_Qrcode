@@ -5,3 +5,5 @@ xmltodict
 xlsxwriter
 opencv
 libzbar0
+streamlit-camera-input-live
+opencv-python-headless
