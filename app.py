@@ -1,75 +1,39 @@
 import streamlit as st
 import cv2
-import pandas as pd
-from datetime import datetime
-
-# DataFrame para armazenar os QR Codes escaneados
-df = pd.DataFrame(columns=['Link', 'Data e Hora'])
+from pyzbar.pyzbar import decode
 
 def read_qr_code(frame):
-    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-    qr_decoder = cv2.QRCodeDetector()
-    data, bbox, _ = qr_decoder.detectAndDecodeMulti(gray)
-    decoded_objects = []
-    for d in data:
-        decoded_objects.append({'data': d})
-    return decoded_objects
+    decoded_objects = decode(frame)
+    for obj in decoded_objects:
+        # Desenha um retângulo ao redor do QR code
+        (x, y, w, h) = obj.rect
+        cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
+        
+        # Decodifica o conteúdo do QR code
+        qr_data = obj.data.decode("utf-8")
+        
+        # Exibe o conteúdo do QR code
+        st.write("QR Code:", qr_data)
 
 def main():
-    global df
-    
-    st.title("Leitor de QR Code")
+    st.title("Leitor de QR Code com Streamlit")
 
-    st.markdown(
-        """
-        Este aplicativo permite que você use a câmera do dispositivo para escanear e ler QR Codes.
-        Para começar, clique no botão abaixo para capturar uma imagem. Certifique-se de que o QR Code esteja bem visível na imagem capturada.
-        """
-    )
+    # Inicia a captura da câmera
+    cap = cv2.VideoCapture(0)
 
-    cap = cv2.VideoCapture(0) 
+    # Captura um único frame
+    ret, frame = cap.read()
+    if not ret:
+        st.error("Erro ao capturar a imagem da câmera.")
 
-    if not cap.isOpened():
-        st.error("Erro ao acessar a câmera.")
-        return
+    # Chama a função para ler QR codes
+    read_qr_code(frame)
 
-    st.write("A inicializar a câmera...")
+    # Exibe o frame na interface do Streamlit
+    st.image(frame, channels="BGR", use_column_width=True)
 
-    brightness = st.slider("Ajustar brilho", min_value=0, max_value=100, value=50)
-
-    if st.button("Capturar"):
-        ret, frame = cap.read()
-
-        if ret:
-            frame = cv2.convertScaleAbs(frame, alpha=brightness / 100)
-
-            decoded_objects = read_qr_code(frame)
-            if decoded_objects:
-                st.success("QR Code lido com sucesso!")
-                process_qr_code(decoded_objects)
-
-            else:
-                st.error("Nenhum QR Code encontrado na imagem.")
-
+    # Libera a captura da câmera
     cap.release()
-
-def process_qr_code(decoded_objects):
-    global df
-    
-    for obj in decoded_objects:
-        link = obj['data']
-        df.loc[len(df)] = [link, datetime.now()]
 
 if __name__ == "__main__":
     main()
-
-    # Exibir DataFrame dos QR Codes escaneados
-    if not df.empty:
-        st.dataframe(df)
-
-        # Botão de download para baixar a planilha
-        if st.button("Baixar Planilha"):
-            file_name = "qrcodes_scaneados.xlsx"
-            df.to_excel(file_name, index=False)
-            with open(file_name, "rb") as file:
-                btn = st.download_button(label="Clique para baixar", data=file, file_name=file_name, mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
