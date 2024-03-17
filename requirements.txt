@@ -4,3 +4,4 @@ pandas
 xmltodict
 xlsxwriter
 opencv
+libzbar
