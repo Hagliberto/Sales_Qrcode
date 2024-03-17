@@ -1,39 +1,25 @@
-import streamlit as st
 import cv2
-from pyzbar.pyzbar import decode
+import numpy as np
+import streamlit as st
+from camera_input_live import camera_input_live
 
-def read_qr_code(frame):
-    decoded_objects = decode(frame)
-    for obj in decoded_objects:
-        # Desenha um retângulo ao redor do QR code
-        (x, y, w, h) = obj.rect
-        cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
-        
-        # Decodifica o conteúdo do QR code
-        qr_data = obj.data.decode("utf-8")
-        
-        # Exibe o conteúdo do QR code
-        st.write("QR Code:", qr_data)
+"# Streamlit camera input live Demo"
+"## Try holding a qr code in front of your webcam"
 
-def main():
-    st.title("Leitor de QR Code com Streamlit")
+image = camera_input_live()
 
-    # Inicia a captura da câmera
-    cap = cv2.VideoCapture(0)
+if image is not None:
+    st.image(image)
+    bytes_data = image.getvalue()
+    cv2_img = cv2.imdecode(np.frombuffer(bytes_data, np.uint8), cv2.IMREAD_COLOR)
 
-    # Captura um único frame
-    ret, frame = cap.read()
-    if not ret:
-        st.error("Erro ao capturar a imagem da câmera.")
+    detector = cv2.QRCodeDetector()
 
-    # Chama a função para ler QR codes
-    read_qr_code(frame)
+    data, bbox, straight_qrcode = detector.detectAndDecode(cv2_img)
 
-    # Exibe o frame na interface do Streamlit
-    st.image(frame, channels="BGR", use_column_width=True)
-
-    # Libera a captura da câmera
-    cap.release()
-
-if __name__ == "__main__":
-    main()
+    if data:
+        st.write("# Found QR code")
+        st.write(data)
+        with st.expander("Show details"):
+            st.write("BBox:", bbox)
+            st.write("Straight QR code:", straight_qrcode)
